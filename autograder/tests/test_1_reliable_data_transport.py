@@ -57,14 +57,14 @@ class TestRDT(unittest.TestCase):
         # Create server and client
         if ref_server:
             server_runner = ProcessRunner(
-                f'/autograder/source/src/server {server_port}', file1, name + "_refserver.out")
+                f'runuser -u student -- /autograder/source/src/server {server_port}', file1, name + "_refserver.out")
         else:
             server_runner = ProcessRunner(
                 f'runuser -u student -- {makefile_dir}/server {server_port}', file1, name + "_yourserver.out")
 
         if ref_client:
             client_runner = ProcessRunner(
-                f'/autograder/source/src/client localhost {client_port}', file2, name + "_refclient.out")
+                f'runuser -u student -- /autograder/source/src/client localhost {client_port}', file2, name + "_refclient.out")
         else:
             client_runner = ProcessRunner(
                 f'runuser -u student -- {makefile_dir}/client localhost {client_port}', file2, name + "_yourclient.out")
@@ -72,7 +72,7 @@ class TestRDT(unittest.TestCase):
         # Run both processes and stop when both have outputted the right amount
         # of bytes (or on timeout)
         ProcessRunner.run_two_until_size_or_timeout(
-            server_runner, client_runner, size1, size2, timeout)
+            server_runner, client_runner, size2, size1, timeout)
         p_thread.terminate()
 
         # Compare both the server and client output to original file
@@ -120,11 +120,11 @@ class TestRDT(unittest.TestCase):
     @number(1.1)
     @hide_errors()
     def test_self_ascii(self):
-        """Data Transport (Your Client <-> Your Server): Small, ASCII only file (20 KB)"""
+        """Data Transport (Your Client <-> Your Server): Small, ASCII only file (10 KB)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
         self.make_test(FILE_SIZE, FILE_SIZE, TIMEOUT, True, False, False,
@@ -134,11 +134,11 @@ class TestRDT(unittest.TestCase):
     @number(1.2)
     @hide_errors()
     def test_self(self):
-        """Data Transport (Your Client <-> Your Server): Small file (20 KB)"""
+        """Data Transport (Your Client <-> Your Server): Small file (10 KB)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
         self.make_test(FILE_SIZE, FILE_SIZE, TIMEOUT, False, False,
@@ -148,11 +148,11 @@ class TestRDT(unittest.TestCase):
     @number(1.3)
     @hide_errors()
     def test_client_normal(self):
-        """Data Transport (Your Client <-> Reference Server): Small file (20 KB)"""
+        """Data Transport (Your Client <-> Reference Server): Small file (10 KB)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
         self.make_test(FILE_SIZE, FILE_SIZE, TIMEOUT, False, False, True,
@@ -162,25 +162,25 @@ class TestRDT(unittest.TestCase):
     @number(1.4)
     @hide_errors()
     def test_client_only(self):
-        """Data Transport (Your Client <-> Reference Server): Small file (20 KB, client only)"""
+        """Data Transport (Your Client <-> Reference Server): Small file (10 KB, client only)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
-        self.make_test(0, FILE_SIZE, TIMEOUT, False, False, True,
+        self.make_test(1, FILE_SIZE, TIMEOUT, False, False, True,
                        0, 0, self.test_client_only.__name__)
 
     @weight(20)
     @number(1.5)
     @hide_errors()
     def test_server_normal(self):
-        """Data Transport (Reference Client <-> Your Server): Small file (20 KB)"""
+        """Data Transport (Reference Client <-> Your Server): Small file (10 KB)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
         self.make_test(FILE_SIZE, FILE_SIZE, TIMEOUT, False, True, False,
@@ -190,11 +190,11 @@ class TestRDT(unittest.TestCase):
     @number(1.6)
     @hide_errors()
     def test_server_only(self):
-        """Data Transport (Reference Client <-> Your Server): Small file (20 KB, server only)"""
+        """Data Transport (Reference Client <-> Your Server): Small file (10 KB, server only)"""
         if test_0_compilation.failed:
             self.fail()
 
-        FILE_SIZE = 20000
+        FILE_SIZE = 10000
         TIMEOUT = 3
 
         self.make_test(FILE_SIZE, 1, TIMEOUT, False, True, False,

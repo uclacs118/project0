@@ -6,7 +6,6 @@ import os
 import subprocess
 import string
 
-
 class ProcessRunner():
     def __init__(self, cmd, data, stderr_file=None):
         super().__init__()
@@ -22,9 +21,11 @@ class ProcessRunner():
         self.f = open(f'/autograder/{filename}', 'rb')
 
         if stderr_file:
-            self.stderr_file = open(f'/autograder/submission/{stderr_file}', 'wb')
+            self.stderr_file = open(
+                f'/autograder/results/{stderr_file}', 'wb')
         else:
-            self.stderr_file = open(f'/autograder/submission/err{randomword(10)}', 'wb')
+            self.stderr_file = open(
+                f'/autograder/results/err{randomword(10)}', 'wb')
 
     def run(self):
         self.process = subprocess.Popen(self.cmd.split(
@@ -61,8 +62,8 @@ class ProcessRunner():
         runner2.process.stdout.close()
 
         # Kill processes
-        runner1.process.kill()
-        runner2.process.kill()
+        os.system("pkill -P " + str(runner1.process.pid))
+        os.system("pkill -P " + str(runner2.process.pid))
         runner1.process.wait()
         runner2.process.wait()
 
@@ -88,52 +89,57 @@ def byte_diff(bytes1, bytes2):
 
 
 def proxy(client_port, server_port, loss_rate, reorder_rate):
-    random.seed(4322)
 
     cli_serv_buffer = []
     serv_cli_buffer = []
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 200000)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 200000)
+    c = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    c.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 200000)
+    c.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 200000)
     fcntl.fcntl(s, fcntl.F_SETFL, os.O_NONBLOCK)
     fcntl.fcntl(c, fcntl.F_SETFL, os.O_NONBLOCK)
-    c.bind(('localhost', client_port))
+    server_path = "/tmp/" + str(random.randint(7000, 7999))
+    client_path = "/tmp/" + str(client_port)
+    if os.path.exists(server_path):
+        os.unlink(server_path)
+    if os.path.exists(client_path):
+        os.unlink(client_path)
+    s.bind(server_path)
+    c.bind(client_path)
+    os.system(f'chmod 777 {server_path}')
+    os.system(f'chmod 777 {client_path}')
     c_addr = None
 
     last_flush = int(time.time() * 1000)
 
+    random.seed(4322)
     while True:
         try:
-            data, c_addr = c.recvfrom(4096)
-            if len(data) > 2000 or len(data) <= 0:
-                continue
+            data, c_addr = c.recvfrom(1024)
 
             if random.random() > loss_rate:
                 if random.random() > reorder_rate:
                     # send immediately
-                    s.sendto(data, ('localhost', server_port))
+                    s.sendto(data, "/tmp/" + str(server_port))
                 else:
                     # store in buffer
                     cli_serv_buffer.append(data)
-            else:
-                continue
         except BlockingIOError:
             pass
 
+        if c_addr is None:
+            continue
+
         try:
-            data, _ = s.recvfrom(4096)
-            if len(data) > 2000 or len(data) <= 0:
-                continue
+            data, _ = s.recvfrom(1024)
             if random.random() > loss_rate:
-                if c_addr:
-                    if random.random() > reorder_rate:
-                        c.sendto(data, c_addr)
-                    else:
-                        serv_cli_buffer.append(data)
+                if random.random() > reorder_rate:
+                    c.sendto(data, c_addr)
                 else:
-                    continue
-            else:
-                continue
+                    serv_cli_buffer.append(data)
         except BlockingIOError:
             pass
 
@@ -143,7 +149,7 @@ def proxy(client_port, server_port, loss_rate, reorder_rate):
         if len(cli_serv_buffer) > 5 or (len(cli_serv_buffer) and epoch_ms - last_flush > 300):
             random.shuffle(cli_serv_buffer)
             for d in cli_serv_buffer:
-                s.sendto(d, ('localhost', server_port))
+                s.sendto(d, "/tmp/" + str(server_port))
             cli_serv_buffer = []
             last_flush = epoch_ms
 
@@ -154,4 +160,3 @@ def proxy(client_port, server_port, loss_rate, reorder_rate):
                     c.sendto(d, c_addr)
             serv_cli_buffer = []
             last_flush = epoch_ms
-

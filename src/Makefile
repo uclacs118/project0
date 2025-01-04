@@ -1,19 +1,22 @@
 CC=gcc
-CFLAGS= 
+CPPFLAGS=-Wall -Wextra 
+LDFLAGS=
+LDLIBS=-lsocket
 
-all: clean build
+DEPS=
 
-default: build
+all: libsocket.a server client 
 
-build: server.c client.c 
-	${CC} -o server server.c ${CFLAGS}
-	${CC} -o client client.c ${CFLAGS}
+server: server.o $(DEPS)
+client: client.o $(DEPS)
+libsocket.a: libsocket.c
+	$(CC) -shared -fPIC $(CPPFLAGS) -o libsocket.a libsocket.c
 
 clean:
-	rm -rf server client *.bin *.out *.dSYM
-
-zip: clean
-	rm -f project.zip
-	mkdir -p project
-	cp server.c client.c Makefile project
-	zip project0.zip project/*
+	@find . -type f \
+		! -name "*.c" \
+		! -name "*.h" \
+		! -name "*.cpp" \
+		! -name "*.hpp" \
+		! -name "Makefile" -delete
+	@find . -type d \( ! -name "." \) -exec rm -rf {} +
